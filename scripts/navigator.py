@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
 import rospy
+# <CHANGE
+import time
+# CHANGE>
 from nav_msgs.msg import OccupancyGrid, MapMetaData, Path
 from geometry_msgs.msg import Twist, Pose2D, PoseStamped
 from std_msgs.msg import String
@@ -17,6 +20,10 @@ from enum import Enum
 
 from dynamic_reconfigure.server import Server
 from asl_turtlebot.cfg import NavigatorConfig
+
+# <CHANGE
+from asl_turtlebot.msg import DetectedObject, DetectedObjectList, VendorLocation
+# CHANGE>
 
 # state machine modes, not all implemented
 class Mode(Enum):
@@ -63,10 +70,10 @@ class Navigator:
         self.current_plan_start_time = rospy.get_rostime()
         self.current_plan_duration = 0
         self.plan_start = [0.,0.]
-        
+
         # Robot limits
-        self.v_max = 0.2    # maximum velocity
-        self.om_max = 0.4   # maximum angular velocity
+        self.v_max = rospy.get_param("~v_max", 0.2)    # maximum velocity
+        self.om_max = rospy.get_param("~om_max", 0.5)  # maximum ang. velocity
 
         self.v_des = 0.12   # desired cruising velocity
         self.theta_start_thresh = 0.05   # threshold in theta to start moving forward when path-following
@@ -75,7 +82,9 @@ class Navigator:
         # threshold at which navigator switches from trajectory to pose control
         self.near_thresh = 0.2
         self.at_thresh = 0.02
+        # <CHANGE
         self.at_thresh_theta = 0.05
+        # CHANGE>
 
         # trajectory smoothing
         self.spline_alpha = 0.15
@@ -89,6 +98,12 @@ class Navigator:
 
         # heading controller parameters
         self.kp_th = 2.
+
+        # <CHANGE
+        self.home = (3.15, 1.6, 0) # x,y,z
+        self.vendor_dict = {}
+        self.pickup_queue = None
+        # CHANGE>
 
         self.traj_controller = TrajectoryTracker(self.kpx, self.kpy, self.kdx, self.kdy, self.v_max, self.om_max)
         self.pose_controller = PoseController(0., 0., 0., self.v_max, self.om_max)
@@ -107,13 +122,60 @@ class Navigator:
         rospy.Subscriber('/map_metadata', MapMetaData, self.map_md_callback)
         rospy.Subscriber('/cmd_nav', Pose2D, self.cmd_nav_callback)
 
+        # <CHANGE
+        # rospy.Subscriber('/detector/sink', DetectedObject, self.detector_callback)
+        # rospy.Subscriber('/detector/sports_ball', DetectedObject, self.detector_callback)
+        # CHANGE>
+
+        # <CHANGE
+        #rospy.Subscriber('/vendor', VendorLocation, self.vendor_callback)
+        #rospy.Subscriber('/delivery_request', String, self.delivery_request_callback)
+        # CHANGE>
+
         print "finished init"
-        
+
+    # <CHANGE
+    # This callback function is created from scratch, subject to further modification
+    # This is used to publish the location of the vendor
+    # def detector_callback(self, msg):
+    #     vendor_location = VendorLocation()
+    #     theta = (msg.thetaleft + msg.thetaright) / 2.0 + self.theta - np.pi
+    #     dist = msg.distance
+    #     vendor_location.x = self.x - dist * np.cos(theta)
+    #     vendor_location.y = self.y - dist * np.sin(theta)
+    #     vendor_location.theta = theta
+    #     vendor_location.id = msg.id
+    #     vendor_location.name = msg.name
+    #     vendor_location_pub = rospy.Publisher('/vendor', VendorLocation, queue_size=10)
+    #     vendor_location_pub.publish(vendor_location)
+    # CHANGE>
+
+    # <CHANGE
+    #def vendor_callback(self, msg):
+        #self.vendor_dict[msg.name] = (msg.x, msg.y, msg.theta)
+
+    #def delivery_request_callback(self, msg):
+     #   self.delivery_list = msg.split(",")
+      #  for vendor in self.delivery_list:
+       #     self.x_g, self.y_g, self.theta_g = self.vendor_dict[vendor]
+        #    self.replan()
+         #   rospy.loginfo("On the way to pick up the orders")
+          #  while not self.at_goal():
+           #     time.sleep(2)
+            #rospy.loginfo("Picking up the orders")
+         #   rospy.sleep(3)
+          #  rospy.loginfo("On the way to home")
+           # self.x_g, self.y_g, self.theta_g = self.home
+            #self.replan()
+            #rospy.loginfo("Back to home")
+    # CHANGE>
+
     def dyn_cfg_callback(self, config, level):
         rospy.loginfo("Reconfigure Request: k1:{k1}, k2:{k2}, k3:{k3}".format(**config))
         self.pose_controller.k1 = config["k1"]
         self.pose_controller.k2 = config["k2"]
         self.pose_controller.k3 = config["k3"]
+        self.kp_th = config["kp_th"]
         return config
 
     def cmd_nav_callback(self, data):
@@ -163,6 +225,7 @@ class Navigator:
         cmd_vel.angular.z = 0.0
         self.nav_vel_pub.publish(cmd_vel)
 
+
     def near_goal(self):
         """
         returns whether the robot is close enough in position to the goal to
@@ -175,7 +238,7 @@ class Navigator:
         returns whether the robot has reached the goal position with enough
         accuracy to return to idle state
         """
-        return (linalg.norm(np.array([self.x-self.x_g, self.y-self.y_g])) < self.near_thresh and abs(wrapToPi(self.theta - self.theta_g)) < self.at_thresh_theta)
+        return (linalg.norm(np.array([self.x-self.x_g, self.y-self.y_g])) < self.at_thresh and abs(wrapToPi(self.theta - self.theta_g)) < self.at_thresh_theta)
 
     def aligned(self):
         """
@@ -183,7 +246,7 @@ class Navigator:
         (enough to switch to tracking controller)
         """
         return (abs(wrapToPi(self.theta - self.th_init)) < self.theta_start_thresh)
-        
+
     def close_to_plan_start(self):
         return (abs(self.x - self.plan_start[0]) < self.start_pos_thresh and abs(self.y - self.plan_start[1]) < self.start_pos_thresh)
 
@@ -229,13 +292,17 @@ class Navigator:
 
         if self.mode == Mode.PARK:
             V, om = self.pose_controller.compute_control(self.x, self.y, self.theta, t)
+            #print("park")
         elif self.mode == Mode.TRACK:
             V, om = self.traj_controller.compute_control(self.x, self.y, self.theta, t)
+            #print("track")
         elif self.mode == Mode.ALIGN:
             V, om = self.heading_controller.compute_control(self.x, self.y, self.theta, t)
+            #print("align")
         else:
             V = 0.
             om = 0.
+            #print("none")
 
         cmd_vel = Twist()
         cmd_vel.linear.x = V
@@ -279,7 +346,7 @@ class Navigator:
         rospy.loginfo("Planning Succeeded")
 
         planned_path = problem.path
-        
+
 
         # Check whether path is too short
         if len(planned_path) < 4:
@@ -289,6 +356,7 @@ class Navigator:
 
         # Smooth and generate a trajectory
         traj_new, t_new = compute_smoothed_traj(planned_path, self.v_des, self.spline_alpha, self.traj_dt)
+
 
         # If currently tracking a trajectory, check whether new trajectory will take more time to follow
         if self.mode == Mode.TRACK:
@@ -342,7 +410,6 @@ class Navigator:
                 self.switch_mode(Mode.IDLE)
                 print e
                 pass
-
             # STATE MACHINE LOGIC
             # some transitions handled by callbacks
             if self.mode == Mode.IDLE:
@@ -371,7 +438,8 @@ class Navigator:
             self.publish_control()
             rate.sleep()
 
-if __name__ == '__main__':    
+if __name__ == '__main__':
     nav = Navigator()
     rospy.on_shutdown(nav.shutdown_callback)
     nav.run()
+

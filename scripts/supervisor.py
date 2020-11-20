@@ -102,7 +102,7 @@ class Supervisor:
         else:
             self.x_g, self.y_g, self.theta_g = 1.5, -4., 0.
             self.mode = Mode.NAV
-        
+
 
     ########## SUBSCRIBER CALLBACKS ##########
 
@@ -259,11 +259,17 @@ class Supervisor:
 
         elif self.mode == Mode.STOP:
             # At a stop sign
-            self.nav_to_pose()
+            # self.nav_to_pose()
+            # self.init_stop_sign()
+            if self.has_stopped():
+                self.init_crossing()
+                self.mode = Mode.CROSS
 
         elif self.mode == Mode.CROSS:
             # Crossing an intersection
-            self.nav_to_pose()
+            # self.nav_to_pose()
+            if self.has_crossed():
+                self.mode = Mode.NAV
 
         elif self.mode == Mode.NAV:
             if self.close_to(self.x_g, self.y_g, self.theta_g):

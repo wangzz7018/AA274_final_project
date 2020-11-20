@@ -9,7 +9,6 @@ def compute_smoothed_traj(path, V_des, alpha, dt):
     t = 0
     for i in range(len(path)):
         if i > 0:
-            # whoever originally wrote the line below forgot "/ V_des"
             t += np.linalg.norm(np.array(path[i]) - np.array(path[i - 1])) / V_des
         times.append(t)
         x.append(path[i][0])

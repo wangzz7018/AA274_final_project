@@ -193,7 +193,7 @@ class LocalizationVisualizer:
                 continue
             self.EKF.transition_update(self.current_control,
                                        scan_time.to_time() - self.EKF_time.to_time())
-            self.OLC.transition_update(self.current_control,
+            self.OLC.transition_update(self.current_control + np.random.normal(0,0.1,size=(2,)),
                                        scan_time.to_time() - self.EKF_time.to_time())
             self.EKF_time = scan_time
             alpha, r, C_AR, _, _ = ExtractLines(theta, rho,

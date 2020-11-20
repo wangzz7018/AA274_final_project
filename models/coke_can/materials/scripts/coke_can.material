@@ -1,0 +1,14 @@
+material coke_can/Diffuse
+{
+    receive_shadows off
+    technique
+    {
+        pass
+        {
+            texture_unit
+            {
+                texture coke_can.jpg
+            }
+        }
+    }
+}

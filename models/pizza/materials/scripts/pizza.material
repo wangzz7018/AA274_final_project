@@ -1,0 +1,14 @@
+material pizza/Diffuse
+{
+    receive_shadows off
+    technique
+    {
+        pass
+        {
+            texture_unit
+            {
+                texture pizza.jpg
+            }
+        }
+    }
+}
