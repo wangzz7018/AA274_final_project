@@ -2,7 +2,7 @@ import numpy as np
 import scipy.interpolate
 
 def compute_smoothed_traj(path, V_des, alpha, dt):
-
+	"""
     # alpha = 2.0
     times = [] 
     x = [] 
@@ -33,4 +33,36 @@ def compute_smoothed_traj(path, V_des, alpha, dt):
     t_smoothed = t
     traj_smoothed = np.array([x_smooth, y_smooth, th, xd_smooth, yd_smooth, xdd_smooth, ydd_smooth]).T
     return traj_smoothed, t_smoothed
+	"""
+	########## Code starts here ##########
+	x, y = list(zip(*path))
+	x_displacement = np.array(x[1:]) - np.array(x[:-1])
+	y_displacement = np.array(y[1:]) - np.array(y[:-1])
+
+	times = np.zeros(len(x_displacement) + 1)
+	for idx in range(1, len(x_displacement) + 1):
+		times[idx] = times[idx-1] + np.sqrt(x_displacement[idx-1]**2 + y_displacement[idx-1]**2) / V_des
+
+	x_tck = scipy.interpolate.splrep(times, x, s=alpha)
+	y_tck = scipy.interpolate.splrep(times, y, s=alpha)
+	t_smoothed = np.arange(0, times[-1], dt)
+
+	traj_smoothed_x = scipy.interpolate.splev(t_smoothed, x_tck)
+	traj_smoothed_y = scipy.interpolate.splev(t_smoothed, y_tck)
+	traj_smoothed_xdot = scipy.interpolate.splev(t_smoothed, x_tck, der=1)
+	traj_smoothed_ydot = scipy.interpolate.splev(t_smoothed, y_tck, der=1)
+	traj_smoothed_xddot = scipy.interpolate.splev(t_smoothed, x_tck, der=2)
+	traj_smoothed_yddot = scipy.interpolate.splev(t_smoothed, y_tck, der=2)
+	traj_smoothed_theta = np.arctan2(traj_smoothed_ydot, traj_smoothed_xdot)
+	traj_smoothed = np.vstack([traj_smoothed_x, 
+		                       traj_smoothed_y,
+		                      traj_smoothed_theta,
+		                      traj_smoothed_xdot,
+		                      traj_smoothed_ydot,
+		                      traj_smoothed_xddot,
+		                      traj_smoothed_yddot]).T
+	########## Code ends here ##########
+
+	return traj_smoothed, t_smoothed
+
 
