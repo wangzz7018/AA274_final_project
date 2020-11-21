@@ -12,11 +12,11 @@ class DeliveryRequestPublisher:
         # initialize requested items
         self.delivery_request = None
         #create publisher
-        self.request_publisher = rospy.Publisher('/delivery_request', String, queue_size=10)
+        self.request_publisher = rospy.Publisher('/delivery_request', String, queue_size=1)
 
     def publish_request(self):
         #publish the request t times, once every s seconds
-        t = 10
+        t = 1
         s = 1.
         for i in range(t):
             self.request_publisher.publish(self.delivery_request)
