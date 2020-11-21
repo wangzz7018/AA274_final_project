@@ -87,7 +87,7 @@ class Navigator:
         # CHANGE>
 
         # trajectory smoothing
-        self.spline_alpha = 0.15
+        self.spline_alpha = 0.05
         self.traj_dt = 0.1
 
         # trajectory tracking controller parameters
@@ -136,9 +136,10 @@ class Navigator:
 
     # <CHANGE
     def vendor_callback(self, msg):
-        rospy.loginfo("vendor location recordered")
-        self.vendor_dict[msg.name] = (msg.x, msg.y, msg.theta)
-        print self.vendor_dict
+        if msg.name not in self.vendor_dict.keys():
+            rospy.loginfo("vendor location recordered")
+            self.vendor_dict[msg.name] = (msg.x, msg.y, msg.theta)
+            print self.vendor_dict
 
     def delivery_request_callback(self, msg):
         rospy.loginfo("received delivery request...")
