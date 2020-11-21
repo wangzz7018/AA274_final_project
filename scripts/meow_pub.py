@@ -3,12 +3,21 @@ import rospy
 from visualization_msgs.msg import Marker
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Pose2D, PoseStamped
+from asl_turtlebot.msg import DetectedObject
 
-def publish_after_subscribed():
-    vis_pub = rospy.Publisher('meow_topic', Marker, queue_size=10)
+
+publish_marker = False
+
+def subscriber():
+    global meow_message
+    rospy.Subscriber('/detector/cat', DetectedObject, meow_callback)
+
+
+def publisher():
 
     rospy.init_node('meow_node', anonymous=True)
     rate = rospy.Rate(1)
+    vis_pub = rospy.Publisher('meow_topic', Marker, queue_size=10)
 
     while not rospy.is_shutdown():
         marker5 = Marker()
@@ -16,15 +25,8 @@ def publish_after_subscribed():
         marker5.header.frame_id = "map"
         marker5.header.stamp = rospy.Time()
 
-        # IMPORTANT: If you're creating multiple markers, 
-        #            each need to have a separate marker ID.
-
         marker5.id = 5
-
-
         marker5.type = 9
-  
-        
         marker5.text = "Meow"
         
         marker5.pose.position.x = 2
@@ -45,15 +47,24 @@ def publish_after_subscribed():
         marker5.color.g = 0.0
         marker5.color.b = 1.0
         
-        vis_pub.publish(marker5)
-        
-        print('Published marker!')
+        print("printing")
+        if publish_marker:
+            vis_pub.publish(marker5)
+            print('See a cat, publish meowing!')
+        else:
+            print("haven't detected cat")
         
         rate.sleep()
 
+
+def meow_callback(data):
+    publish_marker = True
+
+
 if __name__== '__main__':
     try:
-        publish_after_subscribed()
+        subscriber()
+        publisher()
     except rospy.ROSInterruptException:
         pass
 
