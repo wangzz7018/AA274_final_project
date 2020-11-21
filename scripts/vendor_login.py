@@ -69,6 +69,7 @@ def detector_callback(msg):
     vendor_location.theta = theta
     vendor_location.id = msg.id
     vendor_location.name = msg.name
+    vendor_location.distance = dist
 
 if __name__== '__main__':
     try:

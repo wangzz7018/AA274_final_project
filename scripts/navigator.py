@@ -31,6 +31,8 @@ class Mode(Enum):
     ALIGN = 1
     TRACK = 2
     PARK = 3
+    CROSS = 4
+    STOP = 5
 
 class Navigator:
     """
@@ -108,7 +110,11 @@ class Navigator:
 
         # <CHANGE stop_sign
         self.STOP_TIME = 5
-        self.CROSSING_TIME = 3
+        self.CROSSING_TIME = 30
+        self.STOP_MIN_DIST = 0.4
+        self.stop_sign_start = None
+        self.cross_start = None
+        self.isstop = False
 
         self.traj_controller = TrajectoryTracker(self.kpx, self.kpy, self.kdx, self.kdy, self.v_max, self.om_max)
         self.pose_controller = PoseController(0., 0., 0., self.v_max, self.om_max)
@@ -131,16 +137,41 @@ class Navigator:
         # <CHANGE
         rospy.Subscriber('/vendor', VendorLocation, self.vendor_callback)
         rospy.Subscriber('/delivery_request', String, self.delivery_request_callback)
+
         # CHANGE>
 
         print "finished init"
 
     # <CHANGE
     def vendor_callback(self, msg):
+        if msg.name == "stop_sign":
+            dist = msg.distance
+            if dist > 0 and dist < self.STOP_MIN_DIST and self.mode == Mode.TRACK:
+                self.init_stop_sign()     
         if msg.name not in self.vendor_dict.keys():
             rospy.loginfo("vendor location recordered")
             self.vendor_dict[msg.name] = (msg.x, msg.y, msg.theta)
             print self.vendor_dict
+            
+    #<CHANGE stop_sign
+    def init_stop_sign(self):
+        """ initiates a stop sign maneuver """
+        if self.stop_sign_start is not None:
+            if rospy.get_rostime()-self.stop_sign_start < rospy.Duration.from_sec(self.CROSSING_TIME):
+                return
+        self.stop_sign_start = rospy.get_rostime()
+        self.switch_mode(Mode.STOP)
+    
+    def has_stopped(self):
+        return (self.mode == Mode.STOP and (rospy.get_rostime()-self.stop_sign_start)>rospy.Duration.from_sec(self.STOP_TIME))
+    
+    def init_crossing(self):
+        print "after init_crossing"
+        self.cross_start = rospy.get_rostime()
+        self.switch_mode(Mode.CROSS)
+    
+    def has_crossed(self):
+        return (self.mode == Mode.CROSS and (rospy.get_rostime()-self.cross_start)>rospy.Duration.from_sec(self.CROSSING_TIME))
 
     def delivery_request_callback(self, msg):
         rospy.loginfo("received delivery request...")
@@ -188,7 +219,9 @@ class Navigator:
             self.x_g = data.x
             self.y_g = data.y
             self.theta_g = data.theta
-            self.replan()
+            print "debug:: now replanning"
+            if self.isstop is False:
+                self.replan()
 
     def map_md_callback(self, msg):
         """
@@ -400,13 +433,13 @@ class Navigator:
         self.th_init = traj_new[0,2]
         self.heading_controller.load_goal(self.th_init)
 
-        if not self.aligned():
+        if not self.aligned() and self.isstop is False:
             rospy.loginfo("Not aligned with start direction")
             self.switch_mode(Mode.ALIGN)
             return
-
-        rospy.loginfo("Ready to track")
-        self.switch_mode(Mode.TRACK)
+        if self.isstop is False:
+            rospy.loginfo("Ready to track")
+            self.switch_mode(Mode.TRACK)
 
     def run(self):
         rate = rospy.Rate(10) # 10 Hz
@@ -448,6 +481,25 @@ class Navigator:
                     self.y_g = None
                     self.theta_g = None
                     self.switch_mode(Mode.IDLE)
+            # <CHANGE stop_sign
+            elif self.mode == Mode.STOP:
+                self.isstop = True
+                cmd_vel = Twist()
+                cmd_vel.linear.x = 0.0
+                cmd_vel.angular.z = 0.0
+                self.nav_vel_pub.publish(cmd_vel)
+                time.sleep(5)
+                print "before init_crossing"
+                self.init_crossing()            
+                rate.sleep()
+                pass
+            
+            elif self.mode == Mode.CROSS:
+                self.isstop = False
+                "replan during crossing"
+                self.replan()
+                rate.sleep()
+                pass
 
             self.publish_control()
             rate.sleep()
