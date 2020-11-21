@@ -105,6 +105,7 @@ class Navigator:
         self.pickup_queue = None
         self.phase = 1
 
+
         # <CHANGE stop_sign
         self.STOP_TIME = 5
         self.CROSSING_TIME = 3
@@ -147,19 +148,25 @@ class Navigator:
         self.delivery_list = str(msg.data).split(",")
         print(self.delivery_list)
         for vendor in self.delivery_list:
+            #print "currently delivering____" + vendor
             self.x_g = self.vendor_dict[vendor][0]
             self.y_g = self.vendor_dict[vendor][1]
             self.theta_g = self.vendor_dict[vendor][2]
+            print "currently delivering: ", vendor
             self.replan()
             rospy.loginfo("On the way to pick up the orders")
-            while not self.at_goal():
+            while (self.x_g is not None and self.y_g is not None): # or not self.at_goal()
                 time.sleep(2)
+                if self.mode == Mode.IDLE:
+                    print "due to planning fail, please resent a new request"
+                    return
             rospy.loginfo("Picking up the orders")
             rospy.sleep(3)
         rospy.loginfo("On the way to home")
         self.x_g, self.y_g, self.theta_g = self.home
         self.replan()
         rospy.loginfo("Back to home")
+
 
     def dyn_cfg_callback(self, config, level):
         rospy.loginfo("Reconfigure Request: k1:{k1}, k2:{k2}, k3:{k3}".format(**config))
@@ -229,6 +236,8 @@ class Navigator:
         returns whether the robot has reached the goal position with enough
         accuracy to return to idle state
         """
+        #print "at_goal function____"
+        #print self.x_g, self.y_g
         return (linalg.norm(np.array([self.x-self.x_g, self.y-self.y_g])) < self.at_thresh and abs(wrapToPi(self.theta - self.theta_g)) < self.at_thresh_theta)
 
     def aligned(self):
@@ -315,17 +324,24 @@ class Navigator:
         else:
             sets mode to PARK
         """
+        #### 0707 ### 
+        print "current dictionary: ", self.vendor_dict
         # Make sure we have a map
         if not self.occupancy:
             rospy.loginfo("Navigator: replanning canceled, waiting for occupancy map.")
             self.switch_mode(Mode.IDLE)
             return
-
         # Attempt to plan a path
         state_min = self.snap_to_grid((-self.plan_horizon, -self.plan_horizon))
         state_max = self.snap_to_grid((self.plan_horizon, self.plan_horizon))
         x_init = self.snap_to_grid((self.x, self.y))
         self.plan_start = x_init
+        print "x_goal, y_goal equals", self.x_g, self.y_g
+        #### change 0830 #####
+        if self.x_g is None:
+        	print "self.x_g and self.y_g None before snap_to_grid"
+        	return
+        ###### end change ####
         x_goal = self.snap_to_grid((self.x_g, self.y_g))
         problem = AStar(state_min,state_max,x_init,x_goal,self.occupancy,self.plan_resolution)
 

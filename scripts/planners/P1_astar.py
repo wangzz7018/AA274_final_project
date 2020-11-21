@@ -41,7 +41,7 @@ class AStar(object):
         ########## Code starts here ##########
         # Check to make sure the point is within the bounds of the map
         for idx, val in enumerate(x):
-            if val < self.statespace_lo[idx]+0.15 or val > self.statespace_hi[idx]-0.15:
+            if val < self.statespace_lo[idx]+0.5 or val > self.statespace_hi[idx]-0.5:
                 return False
         return self.occupancy.is_free(x)
         ########## Code ends here ##########
