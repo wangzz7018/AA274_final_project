@@ -2,6 +2,7 @@ import numpy as np
 import scipy.interpolate
 
 def compute_smoothed_traj(path, V_des, alpha, dt):
+
     # alpha = 2.0
     times = [] 
     x = [] 
@@ -32,3 +33,4 @@ def compute_smoothed_traj(path, V_des, alpha, dt):
     t_smoothed = t
     traj_smoothed = np.array([x_smooth, y_smooth, th, xd_smooth, yd_smooth, xdd_smooth, ydd_smooth]).T
     return traj_smoothed, t_smoothed
+

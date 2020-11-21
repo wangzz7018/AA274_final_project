@@ -103,7 +103,11 @@ class Navigator:
         self.home = (3.15, 1.6, 0) # x,y,z
         self.vendor_dict = {}
         self.pickup_queue = None
-        # CHANGE>
+        self.phase = 1
+
+        # <CHANGE stop_sign
+        self.STOP_TIME = 5
+        self.CROSSING_TIME = 3
 
         self.traj_controller = TrajectoryTracker(self.kpx, self.kpy, self.kdx, self.kdy, self.v_max, self.om_max)
         self.pose_controller = PoseController(0., 0., 0., self.v_max, self.om_max)
@@ -122,53 +126,37 @@ class Navigator:
         rospy.Subscriber('/map_metadata', MapMetaData, self.map_md_callback)
         rospy.Subscriber('/cmd_nav', Pose2D, self.cmd_nav_callback)
 
-        # <CHANGE
-        # rospy.Subscriber('/detector/sink', DetectedObject, self.detector_callback)
-        # rospy.Subscriber('/detector/sports_ball', DetectedObject, self.detector_callback)
-        # CHANGE>
 
         # <CHANGE
-        #rospy.Subscriber('/vendor', VendorLocation, self.vendor_callback)
-        #rospy.Subscriber('/delivery_request', String, self.delivery_request_callback)
+        rospy.Subscriber('/vendor', VendorLocation, self.vendor_callback)
+        rospy.Subscriber('/delivery_request', String, self.delivery_request_callback)
         # CHANGE>
 
         print "finished init"
 
     # <CHANGE
-    # This callback function is created from scratch, subject to further modification
-    # This is used to publish the location of the vendor
-    # def detector_callback(self, msg):
-    #     vendor_location = VendorLocation()
-    #     theta = (msg.thetaleft + msg.thetaright) / 2.0 + self.theta - np.pi
-    #     dist = msg.distance
-    #     vendor_location.x = self.x - dist * np.cos(theta)
-    #     vendor_location.y = self.y - dist * np.sin(theta)
-    #     vendor_location.theta = theta
-    #     vendor_location.id = msg.id
-    #     vendor_location.name = msg.name
-    #     vendor_location_pub = rospy.Publisher('/vendor', VendorLocation, queue_size=10)
-    #     vendor_location_pub.publish(vendor_location)
-    # CHANGE>
+    def vendor_callback(self, msg):
+        self.vendor_dict[msg.name] = (msg.x, msg.y, msg.theta)
 
-    # <CHANGE
-    #def vendor_callback(self, msg):
-        #self.vendor_dict[msg.name] = (msg.x, msg.y, msg.theta)
-
-    #def delivery_request_callback(self, msg):
-     #   self.delivery_list = msg.split(",")
-      #  for vendor in self.delivery_list:
-       #     self.x_g, self.y_g, self.theta_g = self.vendor_dict[vendor]
-        #    self.replan()
-         #   rospy.loginfo("On the way to pick up the orders")
-          #  while not self.at_goal():
-           #     time.sleep(2)
-            #rospy.loginfo("Picking up the orders")
-         #   rospy.sleep(3)
-          #  rospy.loginfo("On the way to home")
-           # self.x_g, self.y_g, self.theta_g = self.home
-            #self.replan()
-            #rospy.loginfo("Back to home")
-    # CHANGE>
+    def delivery_request_callback(self, msg):
+        rospy.loginfo("received delivery request...")
+        self.phase = 2 ####change####
+        self.delivery_list = str(msg.data).split(",")
+        print(self.delivery_list)
+        for vendor in self.delivery_list:
+            self.x_g = self.vendor_dict[vendor].x
+            self.y_g = self.vendor_dict[vendor].y
+            self.theta_g = self.vendor_dict[vendor].theta
+            self.replan()
+            rospy.loginfo("On the way to pick up the orders")
+            while not self.at_goal():
+                time.sleep(2)
+            rospy.loginfo("Picking up the orders")
+            rospy.sleep(3)
+        rospy.loginfo("On the way to home")
+        self.x_g, self.y_g, self.theta_g = self.home
+        self.replan()
+        rospy.loginfo("Back to home")
 
     def dyn_cfg_callback(self, config, level):
         rospy.loginfo("Reconfigure Request: k1:{k1}, k2:{k2}, k3:{k3}".format(**config))
@@ -203,7 +191,7 @@ class Navigator:
         """
         self.map_probs = msg.data
         # if we've received the map metadata and have a way to update it:
-        if self.map_width>0 and self.map_height>0 and len(self.map_probs)>0:
+        if self.map_width>0 and self.map_height>0 and len(self.map_probs)>0 and self.phase == 1: #change
             self.occupancy = StochOccupancyGrid2D(self.map_resolution,
                                                   self.map_width,
                                                   self.map_height,
@@ -342,6 +330,9 @@ class Navigator:
         success =  problem.solve()
         if not success:
             rospy.loginfo("Planning failed")
+            #####change####
+            self.mode = Mode.IDLE
+            ##############
             return
         rospy.loginfo("Planning Succeeded")
 

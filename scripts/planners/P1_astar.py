@@ -216,7 +216,7 @@ class DetOccupancyGrid2D(object):
         for obs in self.obstacles:
             inside = True
             for dim in range(len(x)):
-                if x[dim] < obs[0][dim]-0.15 or x[dim] > obs[1][dim]+0.15:
+                if x[dim] < obs[0][dim]-0.2 or x[dim] > obs[1][dim]+0.2:
                     inside = False
                     break
             if inside:
