@@ -136,7 +136,9 @@ class Navigator:
 
     # <CHANGE
     def vendor_callback(self, msg):
+        rospy.loginfo("vendor location recordered")
         self.vendor_dict[msg.name] = (msg.x, msg.y, msg.theta)
+        print self.vendor_dict
 
     def delivery_request_callback(self, msg):
         rospy.loginfo("received delivery request...")
@@ -144,9 +146,9 @@ class Navigator:
         self.delivery_list = str(msg.data).split(",")
         print(self.delivery_list)
         for vendor in self.delivery_list:
-            self.x_g = self.vendor_dict[vendor].x
-            self.y_g = self.vendor_dict[vendor].y
-            self.theta_g = self.vendor_dict[vendor].theta
+            self.x_g = self.vendor_dict[vendor][0]
+            self.y_g = self.vendor_dict[vendor][1]
+            self.theta_g = self.vendor_dict[vendor][2]
             self.replan()
             rospy.loginfo("On the way to pick up the orders")
             while not self.at_goal():
