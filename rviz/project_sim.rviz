@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /Marker1
       Splitter Ratio: 0.5
     Tree Height: 533
   - Class: rviz/Selection
@@ -132,6 +133,14 @@ Visualization Manager:
       Topic: /cmd_smoothed_path
       Unreliable: false
       Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /meow_topic
+      Name: Marker
+      Namespaces:
+        "": true
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -193,5 +202,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1200
-  X: 67
-  Y: 0
+  X: 66
+  Y: -18

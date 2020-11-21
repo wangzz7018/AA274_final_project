@@ -14,6 +14,7 @@ def publisher():
         marker0 = Marker()
         marker1 = Marker()
         marker2 = Marker()
+        marker4 = Marker()
 
         marker0.header.frame_id = "map"
         marker0.header.stamp = rospy.Time()
@@ -21,16 +22,23 @@ def publisher():
         marker1.header.stamp = rospy.Time()
         marker2.header.frame_id = "map"
         marker2.header.stamp = rospy.Time()
+        marker4.header.frame_id = "map"
+        marker4.header.stamp = rospy.Time()
 
         # IMPORTANT: If you're creating multiple markers, 
         #            each need to have a separate marker ID.
         marker0.id = 0
         marker1.id = 1
         marker2.id = 2
+        marker4.id = 4
 
         marker0.type = 2 # sphere
-        marker1.type = 2
+        marker1.type = 2 #visualization_msgs::Marker::TEXT_VIEW_FACING
         marker2.type = 2
+        marker4.type = 9
+  
+        
+        marker4.text = "blablabla"
 
         marker0.pose.position.x = 3.5
         marker0.pose.position.y = 1.6
@@ -43,6 +51,10 @@ def publisher():
         marker2.pose.position.x = 1
         marker2.pose.position.y = 2.7
         marker2.pose.position.z = 0.2
+        
+        marker4.pose.position.x = 2
+        marker4.pose.position.y = 1.7
+        marker4.pose.position.z = 0.2
 
         marker0.pose.orientation.x = 0.0
         marker0.pose.orientation.y = 0.0
@@ -58,6 +70,11 @@ def publisher():
         marker2.pose.orientation.y = 0.0
         marker2.pose.orientation.z = 0.0
         marker2.pose.orientation.w = 1.0
+        
+        marker4.pose.orientation.x = 1.0
+        marker4.pose.orientation.y = 0.0
+        marker4.pose.orientation.z = 0.0
+        marker4.pose.orientation.w = 1.0
 
         marker0.scale.x = 0.1
         marker0.scale.y = 0.1
@@ -70,6 +87,10 @@ def publisher():
         marker2.scale.x = 0.1
         marker2.scale.y = 0.1
         marker2.scale.z = 0.1
+        
+        marker4.scale.x = 0.1
+        marker4.scale.y = 0.1
+        marker4.scale.z = 0.1
 
         marker0.color.a = 1.0 # Don't forget to set the alpha!
         marker0.color.r = 1.0
@@ -85,10 +106,19 @@ def publisher():
         marker2.color.r = 0.0
         marker2.color.g = 0.0
         marker2.color.b = 1.0
+
+        marker4.color.a = 1.0 # Don't forget to set the alpha!
+        marker4.color.r = 0.0
+        marker4.color.g = 0.0
+        marker4.color.b = 1.0
         
         vis_pub.publish(marker0)
         vis_pub.publish(marker1)
         vis_pub.publish(marker2)
+        vis_pub.publish(marker4)
+        
+        
+        
 
         print('Published marker!')
         
