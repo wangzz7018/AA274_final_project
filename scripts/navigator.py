@@ -100,7 +100,7 @@ class Navigator:
         self.kp_th = 2.
 
         # <CHANGE
-        self.home = (3.15, 1.6, 0) # x,y,z
+        self.home = (3.40000, 1.60000, 0.1000) # x,y,z
         self.vendor_dict = {}
         self.pickup_queue = None
         self.phase = 1
@@ -155,16 +155,20 @@ class Navigator:
             print "currently delivering: ", vendor
             self.replan()
             rospy.loginfo("On the way to pick up the orders")
+            print "x_g,y_g", self.x_g, self.y_g
             while (self.x_g is not None and self.y_g is not None): # or not self.at_goal()
                 time.sleep(2)
-                if self.mode == Mode.IDLE:
-                    print "due to planning fail, please resent a new request"
-                    return
+                #if self.mode == Mode.IDLE:
+                    #print "due to planning fail, please resent a new request"
+                    #return
             rospy.loginfo("Picking up the orders")
             rospy.sleep(3)
         rospy.loginfo("On the way to home")
         self.x_g, self.y_g, self.theta_g = self.home
         self.replan()
+        rospy.loginfo("Ready to home")
+        while (self.x_g is not None and self.y_g is not None):
+            time.sleep(2)
         rospy.loginfo("Back to home")
 
 
